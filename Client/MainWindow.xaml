@@ -24,11 +24,15 @@
                 RenderTransformOrigin="-0.065,-0.357" Height="26" Width="132" FontSize="16" IsEnabled="false" Click="DecryptButton_Click"/>
         <Label Content="Исходный текст:" HorizontalAlignment="Left" Margin="35,201,0,0" VerticalAlignment="Top" Width="203" FontSize="15"/>
         <Label Content="Преобразованный текст:" HorizontalAlignment="Left" Margin="660,201,0,0" VerticalAlignment="Top" Width="203" FontSize="15"/>
-        <Button Content="        Показать&#xD;&#xA;частотный словарь" HorizontalAlignment="Left"
-                Margin="908,48,0,0" VerticalAlignment="Top" Height="42" Width="158" FontSize="15"/>
-        <Button x:Name="GenerationButton" Content="Сгенерировать" HorizontalAlignment="Left" 
-                Margin="36,122,0,0" VerticalAlignment="Top" Width="100" IsEnabled="False" Click="GenerationButton_Click"/>
-        <Button x:Name="ShowGraphics" Content="Показать графики" HorizontalAlignment="Left" Margin="1084,48,0,0" VerticalAlignment="Top" Height="42" Width="166" FontSize="15" />
         <ComboBox HorizontalAlignment="Left" Margin="36,95,0,0" VerticalAlignment="Top" Width="100" x:Name="KeyDimension" SelectionChanged="KeyDimensionChanged"/>
+        <TextBox HorizontalAlignment="Left" Margin="357,33,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="135" Height="22" IsEnabled="False" x:Name="nNumber" TextChanged="nNumber_TextChanged"/>
+        <Label Content="n:" HorizontalAlignment="Left" Margin="357,10,0,0" VerticalAlignment="Top" Width="64"/>
+        <TextBox HorizontalAlignment="Left" Margin="357,85,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="135" Height="22" IsEnabled="False" x:Name="mNumber"/>
+        <Label Content="m:" HorizontalAlignment="Left" Margin="357,62,0,0" VerticalAlignment="Top"/>
+        <TextBox HorizontalAlignment="Left" Margin="552,33,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="342" Height="144" x:Name="SverhVoz"/>
+        <Label Content="Сверхвозростающая последотельность" HorizontalAlignment="Left" Margin="552,7,0,0" VerticalAlignment="Top" Width="293"/>
+        <TextBox HorizontalAlignment="Left" Margin="912,37,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="338" Height="140" x:Name="OpenKey"/>
+        <Label Content="Открытый ключ" HorizontalAlignment="Left" Margin="912,11,0,0" VerticalAlignment="Top" Width="149"/>
+        <Button Content="Ok" HorizontalAlignment="Left" Margin="158,96,0,0" VerticalAlignment="Top" Width="33" Click="Generate"/>
     </Grid>
 </Window>

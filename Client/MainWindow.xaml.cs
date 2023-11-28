@@ -3,6 +3,7 @@ using Microsoft.Win32;
 using System;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Windows;
 
@@ -13,35 +14,41 @@ namespace Client
     /// </summary>
     public partial class MainWindow : Window
     {
-        private int n, m;
-        private int[] encryptedValues;
+        private BigInteger n, m;
+        private BigInteger[] encryptedValues;
+        private BigInteger[] privateKey;
+        private BigInteger[] openKey;
 
         public MainWindow()
         {
             InitializeComponent();
-            KeyDimension.ItemsSource = Enumerable.Range(1, 150);
+            KeyDimension.ItemsSource = Enumerable.Range(2, 149);
         }
 
-        private void GenerationButton_Click(object sender, RoutedEventArgs e)
+        private void Generate(object sender, RoutedEventArgs e)
         {
-            var rnd = new Random();
-            KeyDimension.SelectedItem = rnd.Next(1, 150);
+            var values = KnapsackEncoder.Generate((int)KeyDimension.SelectedItem);
+            privateKey = values.Item1;
+            openKey = values.Item2;
+            m = values.Item3;
+            n = values.Item4;
+            nNumber.Text = n.ToString();
+            mNumber.Text = m.ToString();
+            SverhVoz.Text = string.Join(", ", privateKey);
+            OpenKey.Text = string.Join(", ", openKey);
         }
 
         private void EncryptButton_Click(object sender, RoutedEventArgs e)
         {
-            var encoder = new KnapsackEncoder((int)KeyDimension.SelectedItem, InitialText.Text);
-            var encrypted = encoder.Encrypt();
-            encryptedValues = encrypted.Item1;
-            n = encrypted.Item2;
-            m = encrypted.Item3; 
-            ConvertedText.Text = string.Join(" ", encryptedValues);
+            var encoder = new KnapsackEncoder((int)KeyDimension.SelectedItem, InitialText.Text, n, m, privateKey, openKey);
+            encryptedValues = encoder.Encrypt();
+            ConvertedText.Text = string.Join(", ", encryptedValues);
         }
         private void DecryptButton_Click(object sender, RoutedEventArgs e)
         {
-            var encoder = new KnapsackEncoder((int)KeyDimension.SelectedItem, InitialText.Text);
+            var encoder = new KnapsackEncoder((int)KeyDimension.SelectedItem, InitialText.Text, n, m, privateKey, openKey);
             InitialText.Text = ConvertedText.Text;
-            ConvertedText.Text = encoder.Decrypt(encryptedValues, n, m);
+            ConvertedText.Text = encoder.Decrypt(encryptedValues, n, m, privateKey);
         }
 
         private void LoadTextFromFile(object sender, RoutedEventArgs e)
@@ -125,6 +132,11 @@ namespace Client
         private void InitialTextChanged(object sender, RoutedEventArgs e)
         {
             ValidateEncyptDecryptButton();
+        }
+
+        private void nNumber_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+
         }
 
         private void ValidateEncyptDecryptButton()

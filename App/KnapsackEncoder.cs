@@ -1,147 +1,160 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using MathNet.Numerics;
+using Microsoft.CSharp.RuntimeBinder;
 
 namespace App
 {
     public class KnapsackEncoder
     {
         private readonly int _keyDimension;
+        private readonly BigInteger _n;
+        private readonly BigInteger _m;
+        private readonly List<BigInteger> _privateKey;
+        private readonly List<BigInteger> _openKey;
         private readonly string _text;
 
-        public KnapsackEncoder(int keyDimension, string text)
+        public KnapsackEncoder(int keyDimension, string text, BigInteger n, BigInteger m, BigInteger[] privateKey, BigInteger[] openKey)
         {
             _keyDimension = keyDimension;
             _text = text;
+            _n = n;
+            _m = m;
+            _privateKey = privateKey.ToList();
+            _openKey = openKey.ToList();
         }
 
-        private int[] GenerateSuperincreasingSequence()
+        private static BigInteger[] GenerateSuperincreasingSequence(int keyDimension)
         {
             var rnd = new Random();
-            var sequence = new int[_keyDimension];
-            sequence[0] = rnd.Next(0, 10);
+            var sequence = new BigInteger[keyDimension];
+            BigInteger sum = 0;
 
-            for (var i = 1; i < _keyDimension; i++)
+            for (var i = 0; i < keyDimension; i++)
             {
-                sequence[i] = rnd.Next(sequence.Sum() * 2 + 1, sequence.Sum() * 2 + rnd.Next(2, 20));
+                var randomNumber = GenerateRandomBigInteger(sum + 1, sum + 20);
+                sum += randomNumber;
+                sequence[i] = sum;
             }
 
             return sequence;
         }
 
-        public (int[], int, int) Encrypt()
+        public static (BigInteger[], BigInteger[], BigInteger, BigInteger) Generate(int keyDimension)
         {
             var rnd = new Random();
-            var privateKey = GenerateSuperincreasingSequence();
-            var m = rnd.Next(privateKey.Sum() + 1,
-                privateKey.Sum() + 100);
-            var n = Constants.PrimeNumbers.First();
-            var i = 1;
+            var privateKey = GenerateSuperincreasingSequence(keyDimension);
+            var m = GenerateRandomBigInteger(privateKey.Sum() + 1, privateKey.Sum() + 100);
+            BigInteger n = 2;
             while (Euclid.GreatestCommonDivisor(n, m) != 1)
             {
-                n = Constants.PrimeNumbers[i];
-                i++;
+                n++;
             }
 
             var openKey = privateKey.Select(x => x * n % m).ToArray();
 
-            var binaryText = ConvertTextToBinary(_text);
-            var encryptedValues = new int[binaryText.Length / _keyDimension + 1];
-            for (i = 0; i < binaryText.Length / _keyDimension; i++)
-            {
-                var startIndex = i * _keyDimension;
-                var remainingLength = Math.Min(_keyDimension, binaryText.Length - startIndex);
-                var chunk = binaryText.Substring(startIndex, remainingLength);
-                if (chunk.Length < _keyDimension) chunk.PadLeft(_keyDimension, '0');
-                encryptedValues[i] = SumNumbersByBits(openKey, chunk);
-            }
+            return (privateKey, openKey, m, n);
+        }
+        
+        public static BigInteger GenerateRandomBigInteger(BigInteger minValue, BigInteger maxValue)
+        {
+            Random random = new Random();
+            byte[] bytes = new byte[maxValue.ToByteArray().Length];
+            random.NextBytes(bytes);
 
-            return (encryptedValues, n, m);
+            BigInteger result = new BigInteger(bytes);
+            result = BigInteger.Abs(result % (maxValue - minValue)) + minValue;
+
+            return result;
         }
 
-        public string Decrypt(int[] encryptedValues, int n, int m)
+        public BigInteger[] Encrypt()
         {
-            var inverseN = ModInverse(n, m);
-            var binariyes = encryptedValues.Select(x => x * inverseN % m).ToArray();
-
-            return ConvertBinaryToText(binariyes);
-        }
-
-        private string ConvertTextToBinary(string text)
-        {
-            var binaryStringBuilder = new StringBuilder();
-
-            foreach (var binary in text.Select(c => Convert.ToString(Constants.RussianLetters[c.ToString()], 2)))
+            var binaryText = _text.ToBinary();
+            var encryptedValues = new List<BigInteger>();
+            var chunkSize = _openKey.Count;
+            for (var i = 0; i < binaryText.Length; i += chunkSize)
             {
-                binaryStringBuilder.Append(binary);
-            }
+                int endIndex = Math.Min(i + chunkSize, binaryText.Length);
 
-            return binaryStringBuilder.ToString();
-        }
+                string block = binaryText.Substring(i, endIndex - i).PadRight(chunkSize, '0');
 
-        public string ConvertBinaryToText(int[] binaryText)
-        {
-            var textBuilder = new StringBuilder();
+                BigInteger blockValue = 0;
 
-            for (var i = 0; i < binaryText.Length; i += 8)
-            {
-                textBuilder.Append(Constants.RussianLettersReverse[binaryText[i]]); // Добавление символа в текст
-            }
-
-            return textBuilder.ToString();
-        }
-     
-
-        public int SumNumbersByBits(int[] numbers, string bits)
-        {
-            if (bits.Length != numbers.Length)
-            {
-                throw new ArgumentException("Длина массива битов должна быть равна длине массива чисел.");
-            }
-
-            var sum = 0;
-            for (var i = 0; i < bits.Length; i++)
-            {
-                if (bits[i] == '1')
+                for (int j = 0; j < chunkSize; j++)
                 {
-                    sum += numbers[i];
+                    int bit = int.Parse(block[j].ToString());
+                    blockValue += bit * _openKey[j];
+                }
+
+                encryptedValues.Add(blockValue);
+            }
+
+            return encryptedValues.ToArray();
+        }
+
+        public string Decrypt(BigInteger[] encryptedValues, BigInteger n, BigInteger m, BigInteger[] w)
+        {
+            StringBuilder binaryResult = new StringBuilder();
+            var inverseN = ModInverse(n, m);
+
+            foreach (BigInteger encryptedBlock in encryptedValues)
+            {
+                // Расшифровываем блок
+                BigInteger decryptedValue = encryptedBlock * inverseN % m;
+
+                List<BigInteger> selectedElements = new List<BigInteger>();
+
+                // Раскладываем decryptedValue на элементы w
+                foreach (BigInteger wElement in w.OrderByDescending(x => x))
+                {
+                    while (decryptedValue >= wElement)
+                    {
+                        decryptedValue -= wElement;
+                        selectedElements.Add(wElement);
+                    }
+                }
+
+                // Преобразование выбранных элементов w в двоичную строку
+                foreach (BigInteger element in w)
+                {
+                    if (selectedElements.Contains(element))
+                    {
+                        binaryResult.Append("1");
+                    }
+                    else
+                    {
+                        binaryResult.Append("0");
+                    }
                 }
             }
 
-            return sum;
+            return binaryResult.ToString().BinaryToString();
         }
-
+     
         // Метод для вычисления модульного обратного
-        public int ModInverse(int n, int m)
+        public BigInteger ModInverse(BigInteger n, BigInteger m)
         {
-            int a = n, b = m;
-            int x = 0, y = 1, lastX = 1, lastY = 0;
-            int temp;
+            BigInteger m0 = m;
+            BigInteger y = 0, x = 1;
 
-            while (b != 0)
+            while (n > 1)
             {
-                var quotient = a / b;
-                var remainder = a % b;
+                BigInteger q = n / m;
+                BigInteger t = m;
 
-                a = b;
-                b = remainder;
+                m = n % m;
+                n = t;
+                t = y;
 
-                temp = x;
-                x = lastX - quotient * x;
-                lastX = temp;
-
-                temp = y;
-                y = lastY - quotient * y;
-                lastY = temp;
+                y = x - q * y;
+                x = t;
             }
 
-            if (lastX < 0)
-            {
-                lastX += m;
-            }
-
-            return lastX;
+            return x < 0 ? x + m0 : x;
         }
     }
 }
